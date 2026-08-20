@@ -1,0 +1,27 @@
+# Python and uv generated files
+**/__pycache__/
+*.py[cod]
+**/.venv/
+**/.venv-*/
+**/.uv-cache/
+**/.pytest_cache/
+**/.ruff_cache/
+build/
+dist/
+wheels/
+*.egg-info/
+
+# Local outputs and credentials must never be published
+test-artifacts/
+**/cookies.txt
+**/*.cookies.txt
+
+# Local development material outside the distributable plugin
+/.python-version
+/README.md
+/main.py
+/pytest.ini
+/docs/
+/references/
+/tests/
+/video-summary/

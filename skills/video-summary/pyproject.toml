@@ -1,0 +1,27 @@
+[project]
+name = "video-summary"
+version = "0.1.0"
+description = "Skill-local runtime for caption-first video acquisition and transcription."
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    # Production/runtime dependencies used by the bundled scripts.
+    "av>=14",
+    "faster-whisper>=1.2.1",
+    "ctranslate2>=4.8.1,<5",
+    "yt-dlp>=2025.1.1",
+]
+
+[dependency-groups]
+# Development-only dependencies. Enable explicitly with `--group dev`.
+dev = [
+    "pytest>=8.3",
+    "ruff>=0.9",
+]
+
+[tool.uv]
+package = false
+default-groups = []
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"

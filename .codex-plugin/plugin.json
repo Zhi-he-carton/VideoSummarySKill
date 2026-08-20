@@ -1,0 +1,35 @@
+{
+  "name": "video-summary",
+  "version": "0.1.0",
+  "description": "Caption-first video acquisition, local GPU transcription, timestamped transcripts, and model-generated summaries.",
+  "author": {
+    "name": "Zhi-he-carton"
+  },
+  "keywords": [
+    "video",
+    "transcription",
+    "faster-whisper",
+    "yt-dlp",
+    "subtitles",
+    "cuda"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Video Summary",
+    "shortDescription": "Fetch captions or transcribe videos locally",
+    "longDescription": "Fetch native captions when available, otherwise download audio and transcribe it locally with faster-whisper. Produce timestamped subtitles and transcripts for grounded summaries and content lookup.",
+    "developerName": "Zhi-he-carton",
+    "category": "Productivity",
+    "capabilities": [
+      "Interactive",
+      "Read",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Summarize this video with timestamps.",
+      "Transcribe this video locally with GPU acceleration.",
+      "Find where this video discusses a specific topic."
+    ],
+    "brandColor": "#4F46E5"
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "name": "video-summary",
+  "version": "0.1.0",
+  "description": "Caption-first video acquisition, local GPU transcription, timestamped transcripts, and model-generated summaries.",
+  "author": {
+    "name": "Zhi-he-carton"
+  },
+  "keywords": [
+    "video",
+    "transcription",
+    "faster-whisper",
+    "yt-dlp",
+    "subtitles",
+    "cuda"
+  ]
+}

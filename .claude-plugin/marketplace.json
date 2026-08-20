@@ -1,0 +1,20 @@
+{
+  "name": "video-summary",
+  "metadata": {
+    "description": "Install the video-summary Skill for caption-first local video transcription and summarization."
+  },
+  "owner": {
+    "name": "Zhi-he-carton"
+  },
+  "plugins": [
+    {
+      "name": "video-summary",
+      "description": "Fetch captions or locally transcribe a video, then produce timestamped transcripts and summaries.",
+      "author": {
+        "name": "Zhi-he-carton"
+      },
+      "source": "./",
+      "category": "productivity"
+    }
+  ]
+}

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Video Summary"
+  short_description: "Transcribe and summarize local or online videos"
+  default_prompt: "Use $video-summary to transcribe and summarize this video."
