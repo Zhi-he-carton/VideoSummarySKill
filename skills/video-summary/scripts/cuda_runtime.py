@@ -7,7 +7,6 @@ import sys
 from pathlib import Path
 from typing import Any
 
-
 _DLL_DIRECTORY_HANDLES: list[Any] = []
 _CONFIGURED_DIRECTORIES: set[str] = set()
 

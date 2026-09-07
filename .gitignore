@@ -20,8 +20,6 @@ test-artifacts/
 /.python-version
 /README.md
 /main.py
-/pytest.ini
 /docs/
 /references/
-/tests/
 /video-summary/

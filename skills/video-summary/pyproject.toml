@@ -1,6 +1,10 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
 [project]
 name = "video-summary"
-version = "0.1.0"
+version = "0.1.2"
 description = "Skill-local runtime for caption-first video acquisition and transcription."
 requires-python = ">=3.12,<3.13"
 dependencies = [
@@ -9,6 +13,9 @@ dependencies = [
     "faster-whisper>=1.2.1",
     "ctranslate2>=4.8.1,<5",
     "yt-dlp>=2025.1.1",
+    # onnxruntime 1.29 dropped pre-macOS 14 wheels; keep both Intel and Apple
+    # Silicon Macs installable while faster-whisper still supports this line.
+    "onnxruntime>=1.23.2,<1.29; sys_platform == 'darwin'",
 ]
 
 [dependency-groups]
@@ -19,9 +26,19 @@ dev = [
 ]
 
 [tool.uv]
-package = false
 default-groups = []
+required-environments = [
+    "sys_platform == 'win32' and platform_machine == 'AMD64'",
+    "sys_platform == 'darwin' and platform_machine == 'x86_64'",
+    "sys_platform == 'darwin' and platform_machine == 'arm64'",
+]
+
+[project.scripts]
+video-summary = "scripts.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["scripts"]
 
 [tool.ruff]
 line-length = 100
-target-version = "py310"
+target-version = "py312"

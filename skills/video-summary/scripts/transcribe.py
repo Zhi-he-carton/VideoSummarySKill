@@ -16,11 +16,15 @@ import sys
 import tempfile
 import time
 from collections.abc import Callable, Mapping, Sequence
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
 
-from cuda_runtime import configure_cuda_runtime
+try:
+    from .cuda_runtime import configure_cuda_runtime
+except ImportError:  # Direct ``python scripts/transcribe.py`` compatibility.
+    from cuda_runtime import configure_cuda_runtime
 
 
 SCHEMA_VERSION = 1
@@ -32,22 +36,20 @@ EXIT_TRANSCRIPTION = 4
 EXIT_FILESYSTEM = 5
 EXIT_INTERNAL = 6
 
-PROFILE_MODELS = {
-    "fast": "small",
-    "balanced": "medium",
-    "accurate": "large-v3",
-}
-PROFILE_BEAM_SIZE = {
-    "fast": 3,
-    "balanced": 5,
-    "accurate": 8,
-}
-PROFILE_BATCH_SIZE = {
-    "fast": 16,
-    "balanced": 8,
-    "accurate": 4,
-}
 
+@dataclass(frozen=True)
+class Profile:
+    model: str
+    cuda_compute_type: str
+    beam_size: int
+    batch_size: int
+
+
+PROFILES = {
+    "fast": Profile("small", "float16", beam_size=3, batch_size=16),
+    "balanced": Profile("medium", "float16", beam_size=5, batch_size=8),
+    "accurate": Profile("large-v3", "int8_float16", beam_size=5, batch_size=8),
+}
 WORKER_ENV = "VIDEO_SUMMARY_TRANSCRIBE_WORKER"
 
 
@@ -94,7 +96,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--profile",
         required=True,
-        choices=tuple(PROFILE_MODELS),
+        choices=tuple(PROFILES),
         help="Model/speed profile selected explicitly by the Skill or user.",
     )
     parser.add_argument(
@@ -133,7 +135,7 @@ def _cuda_available() -> bool:
         import ctranslate2
 
         return int(ctranslate2.get_cuda_device_count()) > 0
-    except Exception:
+    except Exception:  # noqa: BLE001 - native backend probes can raise implementation errors.
         return False
 
 
@@ -245,7 +247,7 @@ def _normalise_segments(raw_segments: Any) -> list[dict[str, Any]]:
 
 
 def _timestamp(seconds: float) -> str:
-    total_milliseconds = int(round(max(0.0, seconds) * 1000))
+    total_milliseconds = round(max(0.0, seconds) * 1000)
     hours, remainder = divmod(total_milliseconds, 3_600_000)
     minutes, remainder = divmod(remainder, 60_000)
     whole_seconds, milliseconds = divmod(remainder, 1000)
@@ -343,7 +345,7 @@ def transcribe_path(
     clock: Callable[[], float] = time.perf_counter,
 ) -> dict[str, Any]:
     total_started = clock()
-    if profile not in PROFILE_MODELS:
+    if profile not in PROFILES:
         raise TranscribeError(
             "invalid_profile",
             "profile must be fast, balanced, or accurate.",
@@ -362,10 +364,11 @@ def transcribe_path(
     _ensure_outputs_available(output_dir)
 
     device, warnings = _resolve_device(requested_device, cuda_probe)
-    compute_type = "float16" if device == "cuda" else "int8"
-    model_name = PROFILE_MODELS[profile]
-    batch_size = PROFILE_BATCH_SIZE[profile]
-    beam_size = PROFILE_BEAM_SIZE[profile]
+    settings = PROFILES[profile]
+    compute_type = settings.cuda_compute_type if device == "cuda" else "int8"
+    model_name = settings.model
+    batch_size = settings.batch_size
+    beam_size = settings.beam_size
 
     if backend is None:
         WhisperModel, BatchedInferencePipeline = _load_backend()
@@ -516,7 +519,7 @@ def _suppress_windows_crash_dialog() -> None:
         sem_failcriticalerrors = 0x0001
         sem_nogpfaulterrorbox = 0x0002
         ctypes.windll.kernel32.SetErrorMode(sem_failcriticalerrors | sem_nogpfaulterrorbox)
-    except Exception:
+    except (AttributeError, OSError):
         pass
 
 
@@ -561,8 +564,7 @@ def _run_isolated(arguments: Sequence[str]) -> int:
             [sys.executable, str(Path(__file__).resolve()), *arguments],
             env=environment,
             stdin=subprocess.DEVNULL,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            capture_output=True,
             text=True,
             errors="replace",
             check=False,
@@ -606,7 +608,7 @@ def run(args: argparse.Namespace) -> int:
     except TranscribeError as exc:
         print(_serialize_result(_error_result(args.input, exc)))
         return exc.exit_code
-    except Exception:
+    except Exception:  # noqa: BLE001 - preserve the public JSON error contract.
         error = TranscribeError(
             "internal_error",
             "transcribe failed because of an unexpected internal error.",

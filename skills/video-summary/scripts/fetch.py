@@ -23,7 +23,6 @@ from types import ModuleType
 from typing import Any
 from urllib.parse import urlsplit
 
-
 SCHEMA_VERSION = 1
 
 EXIT_OK = 0
@@ -210,10 +209,7 @@ def _validate_url(url: str) -> None:
         looks_numeric = bool(re.fullmatch(r"(?:0x[0-9a-f]+|[0-9]+)", normalized_host))
         looks_numeric = looks_numeric or (
             len(numeric_parts) > 1
-            and all(
-                re.fullmatch(r"(?:0x[0-9a-f]+|[0-9]+)", part)
-                for part in numeric_parts
-            )
+            and all(re.fullmatch(r"(?:0x[0-9a-f]+|[0-9]+)", part) for part in numeric_parts)
         )
         if looks_numeric:
             raise FetchError(
@@ -652,7 +648,7 @@ def acquire(
                 )
             except FetchError:
                 raise
-            except Exception:
+            except Exception:  # noqa: BLE001 - third-party caption failures are non-fatal.
                 warnings.append(
                     {
                         "code": "caption_download_failed",
@@ -755,7 +751,7 @@ def run(args: argparse.Namespace) -> int:
     except FetchError as exc:
         print(_serialize_result(_error_result(args.url, exc)))
         return exc.exit_code
-    except Exception:
+    except Exception:  # noqa: BLE001 - preserve the public JSON error contract.
         error = FetchError(
             "internal_error",
             "fetch failed because of an unexpected internal error.",

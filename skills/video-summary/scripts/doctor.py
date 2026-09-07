@@ -16,7 +16,10 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
-from cuda_runtime import configure_cuda_runtime
+try:
+    from .cuda_runtime import configure_cuda_runtime
+except ImportError:  # Direct ``python scripts/doctor.py`` compatibility.
+    from cuda_runtime import configure_cuda_runtime
 
 
 SCHEMA_VERSION = 1
@@ -29,11 +32,14 @@ PROFILE_MODELS = {
     "accurate": "Systran/faster-whisper-large-v3",
 }
 SKILL_DIR = Path(__file__).resolve().parents[1]
+UV_CACHE_DIR = SKILL_DIR / ".uv-cache"
 UV_SYNC_COMMAND = [
     "uv",
     "sync",
     "--project",
     str(SKILL_DIR),
+    "--cache-dir",
+    str(UV_CACHE_DIR),
     "--locked",
     "--no-dev",
     "--python",
@@ -80,8 +86,7 @@ def _probe_import(module: str) -> tuple[bool, str | None]:
         completed = subprocess.run(
             command,
             stdin=subprocess.DEVNULL,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            capture_output=True,
             text=True,
             errors="replace",
             timeout=20,
@@ -107,8 +112,7 @@ def _probe_cuda_devices() -> int:
         completed = subprocess.run(
             command,
             stdin=subprocess.DEVNULL,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            capture_output=True,
             text=True,
             errors="replace",
             timeout=20,
@@ -247,11 +251,7 @@ def _gpu_check(ctranslate2_version: str | None) -> tuple[dict[str, Any], bool]:
             item["error"] = error
         libraries.append(item)
     installed_toolkit = _installed_cuda_toolkit_version(configured_directories)
-    runtime_ready = bool(
-        nvidia_smi
-        and cuda_devices > 0
-        and all(x["loadable"] for x in libraries)
-    )
+    runtime_ready = bool(nvidia_smi and cuda_devices > 0 and all(x["loadable"] for x in libraries))
     missing = [item["name"] for item in libraries if not item["loadable"]]
     if runtime_ready:
         toolkit_note = (
@@ -261,7 +261,10 @@ def _gpu_check(ctranslate2_version: str | None) -> tuple[dict[str, Any], bool]:
         )
         message = f"CUDA is ready with {cuda_devices} visible device(s){toolkit_note}."
     elif missing:
-        message = "CUDA hardware is visible, but required runtime libraries are missing: " + ", ".join(missing)
+        message = (
+            "CUDA hardware is visible, but required runtime libraries are missing: "
+            + ", ".join(missing)
+        )
     elif not nvidia_smi or cuda_devices == 0:
         message = "No CUDA device is available to CTranslate2."
     else:
@@ -440,7 +443,22 @@ def _remediation_actions(checks: Sequence[dict[str, Any]]) -> list[dict[str, Any
             )
         )
 
-    if "cuda-runtime" in failed:
+    if "cuda-runtime" in failed and sys.platform == "darwin":
+        actions.append(
+            _action(
+                "use-cpu-on-macos",
+                kind="choose",
+                program="CPU transcription on macOS",
+                manager="runtime",
+                automatic=False,
+                prompt=(
+                    "CUDA transcription is unavailable on macOS. Use --device cpu or "
+                    "--device auto; do not install NVIDIA runtime libraries."
+                ),
+                after="Rerun doctor with --require cpu.",
+            )
+        )
+    elif "cuda-runtime" in failed:
         missing = [
             item["name"]
             for item in failed["cuda-runtime"]["details"].get("libraries", [])
@@ -456,9 +474,9 @@ def _remediation_actions(checks: Sequence[dict[str, Any]]) -> list[dict[str, Any
                 manager="system",
                 automatic=False,
                 prompt=(
-                    "Install official NVIDIA runtime libraries with the Windows x86-64 architecture "
-                    "required by the locked CTranslate2 version; do not use ARM64 libraries or "
-                    f"third-party DLL bundles without user approval. {diagnosis}{suffix}"
+                    "Install official NVIDIA runtime libraries for the host architecture required "
+                    "by the locked CTranslate2 version; do not use third-party runtime bundles "
+                    f"without user approval. {diagnosis}{suffix}"
                 ),
                 after="Rerun doctor with --require cuda before starting GPU transcription.",
             )
